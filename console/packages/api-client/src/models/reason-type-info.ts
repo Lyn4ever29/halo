@@ -12,50 +12,28 @@
  * Do not edit the class manually.
  */
 
-// May contain unused imports in some cases
-// @ts-ignore
-import { Metadata } from "./metadata";
-
 /**
  *
  * @export
- * @interface ContributorVo
+ * @interface ReasonTypeInfo
  */
-export interface ContributorVo {
+export interface ReasonTypeInfo {
   /**
    *
    * @type {string}
-   * @memberof ContributorVo
+   * @memberof ReasonTypeInfo
    */
-  avatar?: string;
+  description?: string;
   /**
    *
    * @type {string}
-   * @memberof ContributorVo
-   */
-  bio?: string;
-  /**
-   *
-   * @type {string}
-   * @memberof ContributorVo
+   * @memberof ReasonTypeInfo
    */
   displayName?: string;
   /**
    *
-   * @type {Metadata}
-   * @memberof ContributorVo
-   */
-  metadata: Metadata;
-  /**
-   *
    * @type {string}
-   * @memberof ContributorVo
+   * @memberof ReasonTypeInfo
    */
   name?: string;
-  /**
-   *
-   * @type {string}
-   * @memberof ContributorVo
-   */
-  permalink?: string;
 }
