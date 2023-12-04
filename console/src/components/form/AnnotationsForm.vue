@@ -11,16 +11,18 @@ import { apiClient } from "@/utils/api-client";
 import type { AnnotationSetting } from "@halo-dev/api-client";
 import cloneDeep from "lodash.clonedeep";
 import { getValidationMessages } from "@formkit/validation";
-import { useThemeStore } from "@/stores/theme";
+import { useThemeStore } from "@console/stores/theme";
 import { randomUUID } from "@/utils/id";
 
 const themeStore = useThemeStore();
 
 function keyValidationRule(node: FormKitNode) {
-  return (
-    !annotations.value?.[node.value as string] &&
-    !customAnnotationsDuplicateKey.value
-  );
+  const validAnnotations = [
+    ...Object.keys(annotations.value),
+    ...customAnnotationsState.value.map((item) => item.key),
+  ];
+  const count = validAnnotations.filter((item) => item === node.value);
+  return count.length < 2;
 }
 
 const props = withDefaults(
@@ -72,12 +74,6 @@ const annotations = ref<{
   [key: string]: string;
 }>({});
 const customAnnotationsState = ref<{ key: string; value: string }[]>([]);
-
-const customAnnotationsDuplicateKey = computed(() => {
-  const keys = customAnnotationsState.value.map((item) => item.key);
-  const uniqueKeys = new Set(keys);
-  return keys.length !== uniqueKeys.size;
-});
 
 const customAnnotations = computed(() => {
   return customAnnotationsState.value.reduce((acc, cur) => {
