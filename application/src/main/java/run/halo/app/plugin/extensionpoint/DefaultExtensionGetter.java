@@ -1,21 +1,28 @@
 package run.halo.app.plugin.extensionpoint;
 
-import java.util.Comparator;
+import static run.halo.app.extension.index.query.QueryFactory.equal;
+
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import org.pf4j.ExtensionPoint;
+import org.pf4j.PluginManager;
 import org.springframework.context.ApplicationContext;
 import org.springframework.core.annotation.AnnotationAwareOrderComparator;
+import org.springframework.data.domain.Sort;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import run.halo.app.extension.ListOptions;
+import run.halo.app.extension.ListResult;
+import run.halo.app.extension.PageRequestImpl;
 import run.halo.app.extension.ReactiveExtensionClient;
+import run.halo.app.extension.router.selector.FieldSelector;
 import run.halo.app.infra.SystemConfigurableEnvironmentFetcher;
 import run.halo.app.infra.SystemSetting.ExtensionPointEnabled;
-import run.halo.app.plugin.HaloPluginManager;
 
 @Component
 @RequiredArgsConstructor
@@ -23,7 +30,7 @@ public class DefaultExtensionGetter implements ExtensionGetter {
 
     private final SystemConfigurableEnvironmentFetcher systemConfigFetcher;
 
-    private final HaloPluginManager pluginManager;
+    private final PluginManager pluginManager;
 
     private final ApplicationContext applicationContext;
 
@@ -86,6 +93,15 @@ public class DefaultExtensionGetter implements ExtensionGetter {
             });
     }
 
+    @Override
+    public <T extends ExtensionPoint> Flux<T> getExtensions(Class<T> extensionPointClass) {
+        var extensions = new ArrayList<>(pluginManager.getExtensions(extensionPointClass));
+        applicationContext.getBeanProvider(extensionPointClass)
+            .orderedStream()
+            .forEach(extensions::add);
+        return Flux.fromIterable(extensions);
+    }
+
     @NonNull
     <T extends ExtensionPoint> List<T> getAllExtensions(Class<T> extensionPoint) {
         Stream<T> pluginExtsStream = pluginManager.getExtensions(extensionPoint)
@@ -99,11 +115,14 @@ public class DefaultExtensionGetter implements ExtensionGetter {
 
     Mono<ExtensionPointDefinition> fetchExtensionPointDefinition(
         Class<? extends ExtensionPoint> extensionPoint) {
-        // TODO Optimize query
-        return client.list(ExtensionPointDefinition.class, definition ->
-                    extensionPoint.getName().equals(definition.getSpec().getClassName()),
-                Comparator.comparing(definition -> definition.getMetadata().getCreationTimestamp())
+        var listOptions = new ListOptions();
+        listOptions.setFieldSelector(FieldSelector.of(
+            equal("spec.className", extensionPoint.getName())
+        ));
+        var sort = Sort.by("metadata.creationTimestamp", "metadata.name").ascending();
+        return client.listBy(ExtensionPointDefinition.class, listOptions,
+                PageRequestImpl.ofSize(1).withSort(sort)
             )
-            .next();
+            .flatMap(list -> Mono.justOrEmpty(ListResult.first(list)));
     }
 }
